@@ -1,21 +1,67 @@
-"use client"
+"use client";
+
 import { ServiceCard } from "@/components/courier/service-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter } from "lucide-react";
+import { Service } from "@/types/service";
+import { ErrorBoundary } from "@/components/error-boundary";
+
 
 export default function HomePage() {
+  const [services, setServices] = useState<Service[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("");
   const [premiumOnly, setPremiumOnly] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch services based on filters (we'll implement this later)
+  useEffect(() => {
+    fetchServices();
+  }, [locationFilter, vehicleFilter, premiumOnly]);
+
+  const fetchServices = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (locationFilter) params.append('location', locationFilter);
+      if (vehicleFilter) params.append('vehicleType', vehicleFilter);
+      if (premiumOnly) params.append('premiumOnly', 'true');
+  
+      const response = await fetch(`/api/services?${params}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch services');
+      }
+      
+      const data = await response.json();
+      
+      // Ensure data is an array before setting state
+      if (Array.isArray(data)) {
+        setServices(data);
+      } else {
+        setServices([]);
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      setServices([]); // Set empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredServices = Array.isArray(services) 
+  ? services.filter(service =>
+      service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  : [];
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <ErrorBoundary>
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Find Reliable Courier Services in Ghana</h1>
         <p className="text-lg text-muted-foreground mb-8">
@@ -69,15 +115,19 @@ export default function HomePage() {
       </div>
 
       {/* Service Listings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Placeholder for service cards */}
-        <ServiceCard />
-        <ServiceCard />
-        <ServiceCard />
-        <ServiceCard />
-        <ServiceCard />
-        <ServiceCard />
-      </div>
+      {loading ? (
+        <div className="text-center py-12">Loading services...</div>
+      ) : filteredServices.length === 0 ? (
+        <div className="text-center py-12">No services found matching your criteria.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredServices.map((service) => (
+            <ServiceCard key={service._id} service={service} />
+          ))}
+        </div>
+      )}
+      </ErrorBoundary>
+      
     </div>
   );
 }
