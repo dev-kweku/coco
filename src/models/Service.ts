@@ -59,6 +59,14 @@ courierPhone: { type: String, required: true },
 timestamps: true
 });
 
+
+serviceSchema.methods.toJSON=function(){
+    const obj=this.toObject();
+    obj._id=obj._id.toString();
+    obj.courierId=obj.courierId.toString();
+    return obj;
+}
+
 const Service = model<IService>("Service", serviceSchema);
 
 export default Service;

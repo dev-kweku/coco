@@ -6,6 +6,7 @@
     import { Badge } from "@/components/ui/badge";
     import { Star, MapPin, Phone, MessageCircle } from "lucide-react";
     import { Service } from "@/types/service";
+    import Link from "next/link";
 
     interface ServiceCardProps {
     service: Service;
@@ -85,6 +86,11 @@
             <div className="flex items-center text-sm">
                 <span className={`inline-block w-3 h-3 rounded-full mr-2 ${service.availability ? 'bg-green-500' : 'bg-red-500'}`}></span>
                 <span>{service.availability ? 'Available Now' : 'Currently Busy'}</span>
+            </div>
+            <div className="flex items-center justify-between mt-4">
+                <Link href={`/services/${service._id}#reviews`} className="text-sm text-primary hover:underline">
+                    {service.reviews.length} {service.reviews.length===1?'review':'reviews'}
+                </Link>
             </div>
             </div>
         </CardContent>

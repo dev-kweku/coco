@@ -1,6 +1,6 @@
     import { NextRequest, NextResponse } from "next/server";
     import { verifyPayment } from "@/lib/paystack";
-    import { MongoClient, ObjectId } from "mongodb";
+    import Service from "@/models/Service";
 
     export async function GET(request: NextRequest) {
     try {
@@ -20,24 +20,24 @@
         const { serviceId, userId } = response.data.metadata;
         
         // Update service to premium
-        const client = new MongoClient(process.env.MONGODB_URI!);
-        await client.connect();
-        const db = client.db();
-
-        // Convert string id to ObjectId
-        const objectId = new ObjectId(serviceId);
-        
-        await db.collection("services").updateOne(
-            { _id: objectId, courierId: userId },
+        const service = await Service.findByIdAndUpdate(
+            serviceId,
             { 
-            $set: { 
-                premium: true,
-                premiumExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-            }
-            }
+            premium: true,
+            premiumExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+            },
+            { new: true }
         );
 
-        await client.close();
+        if (!service) {
+            return NextResponse.json(
+            { message: "Service not found" },
+            { status: 404 }
+            );
+        }
+
+        // Convert to JSON to trigger the toJSON method
+        const serviceJson = service.toJSON();
         }
 
         return NextResponse.json(response.data);

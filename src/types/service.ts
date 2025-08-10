@@ -1,3 +1,5 @@
+import { ObjectId } from "mongodb";
+
     export interface Service {
         _id: string;
         title: string;
@@ -124,3 +126,9 @@
         metadata: PaymentMetadata;
         };
     }
+
+
+export interface ServiceDocument extends Omit<Service, '_id'|'courierId'>{
+    _id:ObjectId;
+    courierId:ObjectId;
+}

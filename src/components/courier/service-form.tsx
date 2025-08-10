@@ -1,6 +1,6 @@
     "use client";
 
-    import { useState } from "react";
+    import { useState, useEffect } from "react";
     import { useRouter } from "next/navigation";
     import { Button } from "@/components/ui/button";
     import { Input } from "@/components/ui/input";
@@ -9,25 +9,41 @@
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
     import { Textarea } from "@/components/ui/textarea";
     import { useSession } from "next-auth/react";
+    import { Service } from "@/types/service";
 
     interface ServiceFormProps {
-    service?: any;
+    service?: Service;
     }
 
     export function ServiceForm({ service }: ServiceFormProps) {
     const { data: session } = useSession();
     const router = useRouter();
     const [formData, setFormData] = useState({
-        title: service?.title || "",
-        description: service?.description || "",
-        vehicleType: service?.vehicleType || "motorbike",
-        areas: service?.areas?.join(", ") || "",
-        priceMin: service?.priceRange?.min || "",
-        priceMax: service?.priceRange?.max || "",
-        availability: service?.availability ?? true,
+        title: "",
+        description: "",
+        vehicleType: "motorbike" as "motorbike" | "bicycle" | "van",
+        areas: "",
+        priceMin: "",
+        priceMax: "",
+        availability: true,
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+
+    // Initialize form with service data if available
+    useEffect(() => {
+        if (service) {
+        setFormData({
+            title: service.title,
+            description: service.description,
+            vehicleType: service.vehicleType,
+            areas: service.areas.join(", "),
+            priceMin: service.priceRange.min.toString(),
+            priceMax: service.priceRange.max.toString(),
+            availability: service.availability,
+        });
+        }
+    }, [service]);
 
     const handleChange = (field: string, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -41,7 +57,7 @@
         try {
         const payload = {
             ...formData,
-            areas: formData.areas.split(",").map((area: string) => area.trim()).filter(Boolean),
+            areas: formData.areas.split(",").map(area => area.trim()).filter(Boolean),
             priceRange: {
             min: parseInt(formData.priceMin),
             max: parseInt(formData.priceMax),
@@ -104,7 +120,7 @@
                 <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e: { target: { value: string | boolean; }; }) => handleChange("description", e.target.value)}
+                onChange={(e) => handleChange("description", e.target.value)}
                 required
                 />
             </div>
