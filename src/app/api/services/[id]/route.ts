@@ -1,5 +1,6 @@
     import { NextRequest, NextResponse } from "next/server";
     import { MongoClient, ObjectId } from "mongodb";
+    import Service from "@/models/Service";
 
     export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -7,10 +8,7 @@
         await client.connect();
         const db = client.db();
 
-        // Convert string id to ObjectId
-        const objectId = new ObjectId(params.id);
-        
-        const service = await db.collection("services").findOne({ _id: objectId });
+        const service = await db.collection("services").findOne({ _id: new ObjectId(params.id) });
 
         await client.close();
 
@@ -21,7 +19,14 @@
         );
         }
 
-        return NextResponse.json(service);
+        // Convert ObjectId fields to strings
+        const serviceWithStringId = {
+        ...service,
+        _id: service._id.toString(),
+        courierId: service.courierId?.toString(),
+        };
+
+        return NextResponse.json(serviceWithStringId);
     } catch (error) {
         console.error("Error fetching service:", error);
         return NextResponse.json(
@@ -33,17 +38,16 @@
 
     export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const serviceData = await request.json();
+        
         const client = new MongoClient(process.env.MONGODB_URI!);
         await client.connect();
         const db = client.db();
 
-        // Convert string id to ObjectId
-        const objectId = new ObjectId(params.id);
+        const updateData = await request.json();
         
         const result = await db.collection("services").updateOne(
-        { _id: objectId },
-        { $set: { ...serviceData, updatedAt: new Date() } }
+        { _id: new ObjectId(params.id) },
+        { $set: { ...updateData, updatedAt: new Date() } }
         );
 
         await client.close();
@@ -73,10 +77,7 @@
         await client.connect();
         const db = client.db();
 
-        // Convert string id to ObjectId
-        const objectId = new ObjectId(params.id);
-        
-        const result = await db.collection("services").deleteOne({ _id: objectId });
+        const result = await db.collection("services").deleteOne({ _id: new ObjectId(params.id) });
 
         await client.close();
 

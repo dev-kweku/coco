@@ -1,11 +1,19 @@
     import { NextRequest, NextResponse } from "next/server";
+    import { MongoClient, ObjectId } from "mongodb";
     import Order from "@/models/Order";
     import { getServerSession } from "next-auth";
     import { authOptions } from "@/lib/auth.config";
+    import { emitOrderUpdate } from "@/lib/socket-emitter";
 
     export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const order = await Order.findById(params.id).lean();
+        const client = new MongoClient(process.env.MONGODB_URI!);
+        await client.connect();
+        const db = client.db();
+
+        const order = await db.collection("orders").findOne({ _id: new ObjectId(params.id) });
+
+        await client.close();
 
         if (!order) {
         return NextResponse.json(
@@ -45,8 +53,14 @@
         );
         }
 
-        const order = await Order.findById(params.id);
+        const client = new MongoClient(process.env.MONGODB_URI!);
+        await client.connect();
+        const db = client.db();
+
+        const order = await db.collection("orders").findOne({ _id: new ObjectId(params.id) });
+        
         if (!order) {
+        await client.close();
         return NextResponse.json(
             { message: "Order not found" },
             { status: 404 }
@@ -55,6 +69,7 @@
 
         // Check permissions
         if (session.user.role === "courier" && order.courierId?.toString() !== session.user.id) {
+        await client.close();
         return NextResponse.json(
             { message: "You can only update your assigned orders" },
             { status: 403 }
@@ -62,6 +77,7 @@
         }
 
         if (session.user.role === "customer" && order.customerId.toString() !== session.user.id) {
+        await client.close();
         return NextResponse.json(
             { message: "You can only update your own orders" },
             { status: 403 }
@@ -69,41 +85,47 @@
         }
 
         // Update order
-        const updatedOrder = await Order.findByIdAndUpdate(
-        params.id,
+        const result = await db.collection("orders").updateOne(
+        { _id: new ObjectId(params.id) },
         { 
+            $set: { 
             ...updateData, 
             updatedAt: new Date(),
             // Set actual delivery time if status is delivered
             ...(updateData.status === "delivered" && { actualDelivery: new Date() })
-        },
-        { new: true }
+            }
+        }
         );
 
-        // Convert to JSON to trigger the toJSON method
-        const orderJson = updatedOrder.toJSON();
+        await client.close();
+
+        if (result.matchedCount === 0) {
+        return NextResponse.json(
+            { message: "Order not found" },
+            { status: 404 }
+        );
+        }
 
         // Emit socket event for real-time updates
-        if (request.socket?.server?.io) {
-        request.socket.server.io.to(`customer-${order.customerId}`).emit("order-updated", {
+        // Notify customer
+        emitOrderUpdate(`customer-${order.customerId}`, {
+        orderId: params.id,
+        status: updateData.status,
+        timestamp: new Date()
+        });
+
+        // Notify courier if assigned
+        if (order.courierId) {
+        emitOrderUpdate(`courier-${order.courierId}`, {
             orderId: params.id,
             status: updateData.status,
             timestamp: new Date()
         });
-
-        if (order.courierId) {
-            request.socket.server.io.to(`courier-${order.courierId}`).emit("order-updated", {
-            orderId: params.id,
-            status: updateData.status,
-            timestamp: new Date()
-            });
-        }
         }
 
         return NextResponse.json(
         { 
-            message: "Order updated successfully",
-            order: orderJson
+            message: "Order updated successfully"
         }
         );
     } catch (error) {
@@ -126,9 +148,14 @@
         );
         }
 
-        const order = await Order.findByIdAndDelete(params.id);
+        const client = new MongoClient(process.env.MONGODB_URI!);
+        await client.connect();
+        const db = client.db();
+
+        const order = await db.collection("orders").findOne({ _id: new ObjectId(params.id) });
 
         if (!order) {
+        await client.close();
         return NextResponse.json(
             { message: "Order not found" },
             { status: 404 }
@@ -137,9 +164,21 @@
 
         // Check permissions
         if (session.user.role === "customer" && order.customerId.toString() !== session.user.id) {
+        await client.close();
         return NextResponse.json(
             { message: "You can only delete your own orders" },
             { status: 403 }
+        );
+        }
+
+        const result = await db.collection("orders").deleteOne({ _id: new ObjectId(params.id) });
+
+        await client.close();
+
+        if (result.deletedCount === 0) {
+        return NextResponse.json(
+            { message: "Order not found" },
+            { status: 404 }
         );
         }
 

@@ -1,9 +1,15 @@
     import { NextRequest, NextResponse } from "next/server";
-    import Order from "@/models/Order";
+    import { MongoClient, ObjectId } from "mongodb";
 
     export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const order = await Order.findOne({ trackingNumber: params.id }).lean();
+        const client = new MongoClient(process.env.MONGODB_URI!);
+        await client.connect();
+        const db = client.db();
+
+        const order = await db.collection("orders").findOne({ trackingNumber: params.id });
+
+        await client.close();
 
         if (!order) {
         return NextResponse.json(

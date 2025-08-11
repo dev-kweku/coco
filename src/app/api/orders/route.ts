@@ -3,43 +3,11 @@
     import Service from "@/models/Service";
     import { getServerSession } from "next-auth";
     import { authOptions } from "@/lib/auth.config";
+    import { emitNewOrder } from "@/lib/socket-emitter";
+    import { ObjectId } from "mongodb";
+    import { withSocket } from "@/lib/with-socket";
 
-    export async function GET(request: NextRequest) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const status = searchParams.get("status");
-        const customerId = searchParams.get("customerId");
-        const courierId = searchParams.get("courierId");
-
-        const query: any = {};
-        if (status) query.status = status;
-        if (customerId) query.customerId = customerId;
-        if (courierId) query.courierId = courierId;
-
-        const orders = await Order.find(query)
-        .sort({ createdAt: -1 })
-        .lean();
-
-        // Convert ObjectId fields to strings
-        const ordersWithStringIds = orders.map(order => ({
-        ...order,
-        _id: order._id.toString(),
-        customerId: order.customerId.toString(),
-        serviceId: order.serviceId.toString(),
-        courierId: order.courierId?.toString(),
-        }));
-
-        return NextResponse.json(ordersWithStringIds);
-    } catch (error) {
-        console.error("Error fetching orders:", error);
-        return NextResponse.json(
-        { message: "Internal server error" },
-        { status: 500 }
-        );
-    }
-    }
-
-    export async function POST(request: NextRequest) {
+    const handler = withSocket(async (request: NextRequest) => {
     try {
         const session = await getServerSession(authOptions);
         
@@ -71,10 +39,11 @@
 
         const order = new Order({
         ...orderData,
-        customerId: session.user.id,
+        customerId: new ObjectId(session.user.id),
         customerName: session.user.name,
         customerPhone: session.user.phone,
         customerAddress: session.user.location,
+        serviceId: new ObjectId(orderData.serviceId),
         price,
         estimatedDelivery,
         });
@@ -86,7 +55,12 @@
 
         // Emit socket event to courier if service has a courier
         if (service.courierId) {
-        // We'll implement socket emission later
+        emitNewOrder(service.courierId.toString(), {
+            orderId: orderJson._id,
+            customerName: orderJson.customerName,
+            price: orderJson.price,
+            timestamp: new Date()
+        });
         }
 
         return NextResponse.json(
@@ -103,4 +77,6 @@
         { status: 500 }
         );
     }
-    }
+    });
+
+    export { handler as POST };

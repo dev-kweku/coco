@@ -1,72 +1,79 @@
-import mongoose, { Schema, model, Document, ObjectId } from "mongoose";
+    import mongoose, { Schema, model, Document, ObjectId } from "mongoose";
 
-export interface IService extends Document {
-_id: ObjectId;
-title: string;
-description: string;
-vehicleType: "motorbike" | "bicycle" | "van";
-areas: string[];
-priceRange: {
-    min: number;
-    max: number;
-};
-availability: boolean;
-premium: boolean;
-premiumExpiry?: Date;
-rating: number;
-reviews: {
-    customerId: ObjectId;
-    customerName: string;
+    export interface IService extends Document {
+    _id: ObjectId;
+    title: string;
+    description: string;
+    vehicleType: "motorbike" | "bicycle" | "van";
+    areas: string[];
+    priceRange: {
+        min: number;
+        max: number;
+    };
+    availability: boolean;
+    premium: boolean;
+    premiumExpiry?: Date;
     rating: number;
-    comment: string;
+    reviews: {
+        customerId: ObjectId;
+        customerName: string;
+        rating: number;
+        comment: string;
+        createdAt: Date;
+    }[];
+    courierId: ObjectId;
+    courierName: string;
+    courierPhone: string;
     createdAt: Date;
-}[];
-courierId: ObjectId;
-courierName: string;
-courierPhone: string;
-createdAt: Date;
-updatedAt: Date;
-}
+    updatedAt: Date;
+    }
 
-const serviceSchema = new Schema<IService>({
-title: { type: String, required: true },
-description: { type: String, required: true },
-vehicleType: { 
-    type: String, 
-    required: true, 
-    enum: ["motorbike", "bicycle", "van"] 
-},
-areas: [{ type: String, required: true }],
-priceRange: {
-    min: { type: Number, required: true },
-    max: { type: Number, required: true }
-},
-availability: { type: Boolean, default: true },
-premium: { type: Boolean, default: false },
-premiumExpiry: { type: Date },
-rating: { type: Number, default: 0 },
-reviews: [{
-    customerId: { type: Schema.Types.ObjectId, required: true },
-    customerName: { type: String, required: true },
-    rating: { type: Number, required: true, min: 1, max: 5 },
-    comment: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-}],
-courierId: { type: Schema.Types.ObjectId, required: true },
-courierName: { type: String, required: true },
-courierPhone: { type: String, required: true },
-}, {
-timestamps: true
-});
+    const serviceSchema = new Schema<IService>({
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    vehicleType: { 
+        type: String, 
+        required: true, 
+        enum: ["motorbike", "bicycle", "van"] 
+    },
+    areas: [{ type: String, required: true }],
+    priceRange: {
+        min: { type: Number, required: true },
+        max: { type: Number, required: true }
+    },
+    availability: { type: Boolean, default: true },
+    premium: { type: Boolean, default: false },
+    premiumExpiry: { type: Date },
+    rating: { type: Number, default: 0 },
+    reviews: [{
+        customerId: { type: Schema.Types.ObjectId, required: true },
+        customerName: { type: String, required: true },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        comment: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now }
+    }],
+    courierId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    courierName: { type: String, required: true },
+    courierPhone: { type: String, required: true },
+    }, {
+    timestamps: true
+    });
 
-
-serviceSchema.methods.toJSON=function(){
-    const obj=this.toObject();
-    obj._id=obj._id.toString();
-    obj.courierId=obj.courierId.toString();
+    // Method to convert document to JSON with string IDs
+    serviceSchema.methods.toJSON = function() {
+    const obj = this.toObject();
+    obj._id = obj._id.toString();
+    obj.courierId = obj.courierId.toString();
+    // Convert review customerIds to strings
+    if (obj.reviews) {
+        obj.reviews = obj.reviews.map((review: { customerId: { toString: () => any; }; }) => ({
+        ...review,
+        customerId: review.customerId.toString()
+        }));
+    }
     return obj;
-}
+    };
 
-const Service = model<IService>("Service", serviceSchema);
+    const Service = model<IService>("Service", serviceSchema);
 
-export default Service;
+    export default Service;

@@ -38,6 +38,7 @@
         }
     };
 
+    // Fix the function signature to match OrderCard's expectation
     const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
         try {
         const response = await fetch(`/api/orders/${orderId}`, {
@@ -204,4 +205,4 @@
         </Tabs>
         </div>
     );
-    }
+    }   

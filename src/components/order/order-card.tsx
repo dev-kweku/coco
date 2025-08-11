@@ -27,7 +27,7 @@
     order: Order;
     showActions?: boolean;
     onUpdateStatus?: (orderId: string, status: Order["status"]) => void;
-    onContact?: (type: "call" | "message") => void;
+    onContact?: (type: "call" | "message", order: Order) => void;
     }
 
     export function OrderCard({ order, showActions = false, onUpdateStatus, onContact }: OrderCardProps) {
@@ -60,6 +60,11 @@
         } finally {
         setLoading(false);
         }
+    };
+
+    const handleContact = (type: "call" | "message") => {
+        if (!onContact) return;
+        onContact(type, order);
     };
 
     const formatAddress = (address: string) => {
@@ -142,14 +147,14 @@
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onContact("call")}
+                        onClick={() => handleContact("call")}
                     >
                         <Phone className="h-4 w-4" />
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onContact("message")}
+                        onClick={() => handleContact("message")}
                     >
                         <MessageSquare className="h-4 w-4" />
                     </Button>

@@ -12,7 +12,8 @@
     import { Textarea } from "@/components/ui/textarea";
     import { Label } from "@/components/ui/label";
     import { Input } from "@/components/ui/input";
-    import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSafeNotifications } from "@/hooks/useSafeNotifications";
+
 
     export default function OrderDetailPage() {
     const params = useParams();
@@ -26,6 +27,8 @@
         rating: 5,
         review: "",
     });
+
+    const {markAsRead}=useSafeNotifications()
 
     useEffect(() => {
         fetchOrder();
@@ -43,10 +46,11 @@
         }
     };
 
-    const updateOrderStatus = async (status: Order["status"]) => {
+    // Fix the function signature to match OrderCard's expectation
+    const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
         setUpdating(true);
         try {
-        const response = await fetch(`/api/orders/${params.id}`, {
+        const response = await fetch(`/api/orders/${orderId}`, {
             method: "PUT",
             headers: {
             "Content-Type": "application/json",
@@ -86,9 +90,7 @@
         }
     };
 
-    const handleContact = (type: "call" | "message") => {
-        if (!order) return;
-        
+    const handleContact = (type: "call" | "message", order: Order) => {
         const contactNumber = session?.user.role === "courier" 
         ? order.customerPhone 
         : order.courierPhone;
@@ -216,21 +218,14 @@
                         <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="rating">Rating</Label>
-                            <Select
-                            value={reviewData.rating.toString()}
-                            onValueChange={(value: string) => setReviewData(prev => ({ ...prev, rating: parseInt(value) }))}
-                            >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="5">5 Stars - Excellent</SelectItem>
-                                <SelectItem value="4">4 Stars - Good</SelectItem>
-                                <SelectItem value="3">3 Stars - Average</SelectItem>
-                                <SelectItem value="2">2 Stars - Poor</SelectItem>
-                                <SelectItem value="1">1 Star - Terrible</SelectItem>
-                            </SelectContent>
-                            </Select>
+                            <Input
+                            id="rating"
+                            type="number"
+                            min="1"
+                            max="5"
+                            value={reviewData.rating}
+                            onChange={(e) => setReviewData(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="review">Review (Optional)</Label>
@@ -380,14 +375,14 @@
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleContact("call")}
+                            onClick={() => handleContact("call", order)}
                         >
                             <Phone className="h-4 w-4" />
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleContact("message")}
+                            onClick={() => handleContact("message", order)}
                         >
                             <MessageSquare className="h-4 w-4" />
                         </Button>

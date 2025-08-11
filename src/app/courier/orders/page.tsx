@@ -9,12 +9,15 @@
     import { OrderCard } from "@/components/order/order-card";
     import { Order } from "@/types/order";
     import { Package } from "lucide-react";
+import { useSafeNotifications } from "@/hooks/useSafeNotifications";
 
     export default function CourierOrdersPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const {markAsRead}=useSafeNotifications()
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -39,6 +42,7 @@
         }
     };
 
+    // Fix the function signature to match OrderCard's expectation
     const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
         try {
         const response = await fetch(`/api/orders/${orderId}`, {
@@ -57,9 +61,9 @@
         }
     };
 
-    const handleContact = (type: "call" | "message") => {
+    const handleContact = (type: "call" | "message", order: Order) => {
         // This will be implemented based on the specific order
-        console.log("Contact:", type);
+        console.log("Contact:", type, order);
     };
 
     if (status === "loading" || loading) {
