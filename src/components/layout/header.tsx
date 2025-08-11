@@ -25,6 +25,7 @@
             <nav className="hidden md:flex space-x-6">
             <Link href="/" className="hover:text-primary">Home</Link>
             <Link href="/services" className="hover:text-primary">Services</Link>
+            <Link href="/track" className="hover:text-primary">Track Order</Link>
             <Link href="/about" className="hover:text-primary">About</Link>
             <Link href="/contact" className="hover:text-primary">Contact</Link>
             </nav>
